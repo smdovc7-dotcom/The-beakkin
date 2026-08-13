@@ -2,7 +2,7 @@
   "name": "Backrooms Oyunu",
   "short_name": "Backrooms",
   "description": "Maraqlı Backrooms HTML oyunu",
-  "start_url": "/index.html",
+  "start_url": "/index.htmlhttps://github.com/smdovc7-dotcom/The-beakkin/blob/main/index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
@@ -38,6 +38,12 @@
       "sizes": "512x512",
       "type": "image/png"
     }
+  ],
+  "id": "Backrooms Oyunu",
+  "scope": "Backrooms! ",
+  "orientation": "natural",
+  "display_override": [
+    "window-controls-overlay",
+    "minimal-ui"
   ]
 }
-
