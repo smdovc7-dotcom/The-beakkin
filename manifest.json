@@ -6,6 +6,27 @@
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
+  "lang": "az",
+  "dir": "ltr",
+  "categories": [
+    "games",
+    "entertainment"
+  ],
+  "shortcuts": [
+    {
+      "name": "Oyuna Başla",
+      "short_name": "Oyna",
+      "description": "Dərhal oyuna daxil ol",
+      "url": "/index.html",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192.png",
@@ -19,3 +40,4 @@
     }
   ]
 }
+
