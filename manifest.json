@@ -1,9 +1,10 @@
 {
-  "name": "Oyunumun Adı",
-  "short_name": "Oyun",
+  "name": "Backrooms Oyunu",
+  "short_name": "Backrooms",
+  "description": "Maraqlı Backrooms HTML oyunu",
   "start_url": "/index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#000000",
   "theme_color": "#000000",
   "icons": [
     {
@@ -18,4 +19,3 @@
     }
   ]
 }
-
