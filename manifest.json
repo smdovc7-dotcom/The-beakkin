@@ -2,7 +2,7 @@
   "name": "Backrooms Oyunu",
   "short_name": "Backrooms",
   "description": "Maraqlı Backrooms HTML oyunu",
-  "start_url": "/index.html",
+  "start_url": "/index.htmlhttps://github.com/smdovc7-dotcom/The-beakkin/blob/main/index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
@@ -31,8 +31,8 @@
     "action": "/index.html",
     "method": "GET",
     "params": {
-      "title": "title",
-      "text": "text",
+      "title": "Beackroms",
+      "text": "Beackrooms",
       "url": "url"
     }
   },
@@ -43,7 +43,9 @@
     {
       "action": "/index.html",
       "accept": {
-        "image/png": [".png"]
+        "image/png": [
+          ".png"
+        ]
       }
     }
   ],
@@ -70,5 +72,14 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "id": "/index.htmlhttps://github.com/smdovc7-dotcom/The-beakkin/blob/main/index.html",
+  "scope": "Backrooms Oyunu",
+  "orientation": "natural",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
+  "iarc_rating_id": "/index.htmlhttps://github.com/smdovc7-dotcom/The-beakkin/blob/main/index.html",
+  "prefer_related_applications": true
 }
