@@ -12,6 +12,14 @@
     "games",
     "entertainment"
   ],
+  "screenshots": [
+    {
+      "src": "/screenshot.jpg",
+      "sizes": "1000x400",
+      "type": "image/jpeg",
+      "form_factor": "wide"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Oyuna Başla",
