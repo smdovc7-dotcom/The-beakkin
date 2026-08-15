@@ -78,7 +78,8 @@
   "orientation": "natural",
   "display_override": [
     "window-controls-overlay",
-    "standalone"
+    "standalone",
+    "browser"
   ],
   "iarc_rating_id": "/index.htmlhttps://github.com/smdovc7-dotcom/The-beakkin/blob/main/index.html",
   "prefer_related_applications": true
