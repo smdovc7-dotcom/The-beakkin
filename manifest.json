@@ -69,6 +69,31 @@
   "note_taking": {
     "new_note_url": "/index.html"
   },
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "/manifest.json"
+    }
+  ],
+  "widgets": [
+    {
+      "name": "Backrooms Widget",
+      "tag": "backrooms-widget",
+      "template": "default",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "scope_extensions": [
+    {
+      "origin": "*"
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192.png",
@@ -92,3 +117,4 @@
   "iarc_rating_id": "/index.htmlhttps://github.com/smdovc7-dotcom/The-beakkin/blob/main/index.html",
   "prefer_related_applications": true
 }
+
