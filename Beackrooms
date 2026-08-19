@@ -1,1 +1,725 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Qaranlıq Meşə: Chapter 1 - Uzun Hekayə</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; user-select: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Courier New', Courier, monospace; }
+        
+        #game-container { position: relative; width: 100%; height: 100%; }
+        
+        #camera-ui {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: none; z-index: 10;
+        }
+        .crt-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 4px, 3px 100%; pointer-events: none; z-index: 11;
+        }
+        .vignette {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(0,0,0,0) 25%, rgba(0,0,0,0.95) 100%); z-index: 10;
+        }
+        .rec-indicator { position: absolute; top: 20px; left: 20px; color: red; font-size: 20px; font-weight: bold; display: flex; align-items: center; text-shadow: 1px 1px 2px #000; z-index: 12;}
+        .rec-dot { width: 12px; height: 12px; background: red; border-radius: 50%; margin-right: 8px; animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        
+        .battery { position: absolute; top: 20px; right: 20px; width: 55px; height: 22px; border: 2px solid white; border-radius: 3px; z-index: 12;}
+        .battery::after { content: ''; position: absolute; right: -6px; top: 4px; width: 4px; height: 10px; background: white; }
+        .battery-level { width: 100%; height: 100%; background: #4CAF50; transition: width 0.2s; }
+        .battery-text { position: absolute; top: 48px; right: 20px; color: white; font-size: 13px; z-index: 12; font-weight: bold;}
+        
+        .crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.4); font-size: 24px; z-index: 12;}
+        .cam-time { position: absolute; bottom: 20px; right: 20px; color: white; font-size: 16px; text-shadow: 1px 1px 2px #000; z-index: 12;}
+        
+        #objective-text { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); color: #fff; font-size: 16px; text-shadow: 0 0 5px #000; z-index: 12; text-align: center; width: 85%; font-weight: bold;}
+        #waypoint { position: absolute; top: 21%; left: 50%; transform: translateX(-50%); color: #00ffcc; font-size: 18px; font-weight: bold; text-shadow: 0 0 8px #00aaff; z-index: 12; display: none; }
+
+        /* Dialog System */
+        #dialog-box {
+            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 600px; background: rgba(0, 0, 10, 0.95); border: 2px solid #777;
+            color: white; padding: 20px; z-index: 100; display: none; border-radius: 8px;
+            box-shadow: 0 0 25px rgba(0,0,0,0.9); pointer-events: auto; cursor: pointer;
+        }
+        #dialog-name { font-weight: bold; color: #ff5555; margin-bottom: 8px; font-size: 16px;}
+        #dialog-text { font-size: 17px; line-height: 1.5; }
+        #dialog-hint { font-size: 12px; color: #ffcc00; text-align: right; margin-top: 15px; animation: blink 1s infinite; }
+
+        /* Controls Layer */
+        #controls-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; display: none; pointer-events: none; }
+        .action-btn {
+            position: absolute; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.4); border-radius: 50%;
+            color: white; font-weight: bold; display: flex; justify-content: center; align-items: center; font-size: 13px; backdrop-filter: blur(2px);
+            pointer-events: auto;
+        }
+        .action-btn:active { background: rgba(255,255,255,0.5); }
+        #btn-run { bottom: 20px; right: 85px; width: 68px; height: 68px; }
+        #btn-jump { bottom: 100px; right: 20px; width: 60px; height: 60px; }
+        #btn-crouch { bottom: 20px; right: 165px; width: 50px; height: 50px; }
+        
+        #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 120px; height: 120px; background: rgba(255,255,255,0.06); border-radius: 50%; display: none; border: 1px dashed rgba(255,255,255,0.3); pointer-events: auto;}
+        #joystick-knob { position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; background: rgba(255,255,255,0.5); border-radius: 50%; pointer-events: none; }
+        
+        #touch-area-left { position: absolute; top: 0; left: 0; width: 50%; height: 100%; pointer-events: auto; }
+        #touch-area-right { position: absolute; top: 0; right: 0; width: 50%; height: 100%; pointer-events: auto; }
+
+        /* Menus */
+        .menu {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #050505;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 50; color: white; pointer-events: auto;
+        }
+        .menu h1 { color: #cc0000; margin-bottom: 20px; text-shadow: 0 0 12px #ff0000; text-align: center; font-size: 32px; letter-spacing: 2px;}
+        .menu button { background: #111; border: 1px solid #555; color: white; padding: 15px 30px; margin: 10px; font-size: 18px; border-radius: 4px; cursor: pointer; width: 260px; font-family: inherit; transition: 0.3s; }
+        .menu button:active { background: #333; }
+        .lang-btn { background: #1a1a2e; border-color: #4a4ae2; }
+
+        #blood-screen { position: absolute; top:0; left:0; width:100%; height:100%; background: radial-gradient(circle, rgba(255,0,0,0) 20%, rgba(180,0,0,0.85) 100%); z-index: 15; opacity: 0; pointer-events: none; transition: opacity 0.5s; }
+        #fade-screen { position: absolute; top:0; left:0; width:100%; height:100%; background: #000; z-index: 45; pointer-events: none; opacity: 0; transition: opacity 1s; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="camera-ui">
+        <div class="vignette"></div>
+        <div class="crt-overlay"></div>
+        <div class="rec-indicator"><div class="rec-dot"></div> <span id="text-rec">REC</span></div>
+        <div class="battery"><div class="battery-level" id="bat-level-bar"></div></div>
+        <div class="battery-text"><span id="bat-text">100</span>%</div>
+        <div class="crosshair">+</div>
+        <div class="cam-time" id="cam-time">00:00:00</div>
+        
+        <div id="objective-text">...</div>
+        <div id="waypoint">Ev: 150m</div>
+    </div>
+
+    <!-- Dialoq Pəncərəsi -->
+    <div id="dialog-box">
+        <div id="dialog-name">Ad</div>
+        <div id="dialog-text">...</div>
+        <div id="dialog-hint">Davam etmək üçün toxun ➔</div>
+    </div>
+
+    <div id="blood-screen"></div>
+    <div id="fade-screen"></div>
+
+    <div id="controls-layer">
+        <div id="touch-area-left"></div>
+        <div id="touch-area-right"></div>
+        <div id="joystick-zone"><div id="joystick-knob"></div></div>
+        <div class="action-btn" id="btn-run">Qaç</div>
+        <div class="action-btn" id="btn-jump">Tullan</div>
+        <div class="action-btn" id="btn-crouch">Əyil</div>
+    </div>
+
+    <!-- Dil Seçim Menyusu -->
+    <div id="lang-menu" class="menu">
+        <h1 style="color:#fff;">SELECT LANGUAGE / DİL SEÇİN</h1>
+        <button class="lang-btn" onclick="setLanguage('az')">Azərbaycanca</button>
+        <button class="lang-btn" onclick="setLanguage('tr')">Türkçe</button>
+        <button class="lang-btn" onclick="setLanguage('en')">English</button>
+    </div>
+
+    <!-- Əsas Menyu -->
+    <div id="main-menu" class="menu" style="display: none;">
+        <h1 id="menu-title">QARANLIQ MEŞƏ: CHAPTER 1</h1>
+        <p id="menu-desc" style="margin-bottom: 30px; text-align:center; max-width: 85%; color:#aaa; line-height: 1.5;"></p>
+        <button id="btn-start" onclick="startGame()">Oyuna Başla</button>
+    </div>
+
+    <div id="game-over-menu" class="menu" style="display: none;">
+        <h1 style="color:red;" id="end-title">YAXALANDIN!</h1>
+        <p id="end-desc" style="color:#aaa; margin-bottom: 20px; text-align:center; max-width:80%;"></p>
+        <button id="btn-restart" onclick="window.location.reload()">Yenidən Oyna</button>
+    </div>
+
+    <div id="win-menu" class="menu" style="display: none;">
+        <h1 style="color: #4CAF50; text-shadow: 0 0 15px #4CAF50;" id="win-title">CHAPTER 1 TAMAMLANDI</h1>
+        <p style="margin-bottom: 10px; color:#aaa; text-align:center; max-width: 80%;" id="win-desc">Meşədəki sirri araşdırdın və maşınla qaçdın.</p>
+        <p style="color: #ffcc00; font-size: 20px; margin-bottom: 20px; font-weight: bold; animation: blink 1.5s infinite;" id="to-be-continued">Davam edəcək...</p>
+        <button id="btn-restart-win" onclick="window.location.reload()">Ana Menyuma Dön</button>
+    </div>
+</div>
+
+<script>
+    let currentLang = 'az';
+    const texts = {
+        az: {
+            title: "QARANLIQ MEŞƏ: CHAPTER 1",
+            desc: "Chapter 1: Uzun hekayə rejimi. Tərk edilmiş evi tap, radio qülləsindən kömək istə, polis maşını ilə əlaqə qur və sonda qatildən qaçaraq xilas ol.",
+            start: "Oyuna Başla",
+            objHouse: "Məqsəd: Meşədəki tərk edilmiş evi tap.",
+            objRadio: "Radio qülləsini tap və əlaqə qur.",
+            objPolice: "Polis maşınının səsinin gəldiyi yeri tap.",
+            objRun: "Qatil gəlir! Maşına qaç və qurtul!",
+            d1Name: "Polis Radiosu",
+            d1_1: "Bura mərkəz... Meşədəki tərk edilmiş evə baxın, siqnal ordan gəlir!",
+            d1_2: "Ehtiyatlı olun, qatil hələ də ərazidədir...",
+            d2Name: "Evdəki Yaralı",
+            d2_1: "Mənə kömək et... Qatil hər yerdədir, radio qülləsi və polis maşını da buradadır.",
+            d2_2: "Tez ol, arxamızdadır! Maşına qaçmalıyıq!",
+            winTitle: "CHAPTER 1 TAMAMLANDI",
+            winDesc: "Məşədi tədqiq etdin, sirləri açdın və maşınla qaçdın.",
+            continuation: "Davam edəcək...",
+            loseTitle: "YAXALANDIN!",
+            loseDesc: "Qatil səni qaçarkən yaxaladı.",
+            runBtn: "Qaç", jumpBtn: "Tullan", crouchBtn: "Əyil"
+        },
+        tr: {
+            title: "KARANLIK ORMAN: CHAPTER 1",
+            desc: "Chapter 1: Uzun hikaye modu. Terk edilmiş evi bul, telsiz kulesinden yardım iste, polis aracıyla bağlantı kur ve katilden kaç.",
+            start: "Oyuna Başla",
+            objHouse: "Hedef: Ormandaki terk edilmiş evi bul.",
+            objRadio: "Telsiz kulesini bul ve bağlantı kur.",
+            objPolice: "Polis aracının sesinin geldiği yeri bul.",
+            objRun: "Katil geliyor! Arabaya kaç ve kurtul!",
+            d1Name: "Polis Telsizi",
+            d1_1: "Burası merkez... Ormandaki terk edilmiş evə bakın, sinyal oradan geliyor!",
+            d1_2: "Dikkatli olun, katil hala bölgede...",
+            d2Name: "Evdeki Yaralı",
+            d2_1: "Bana yardım et... Katil her yerde, telsiz kulesi ve polis arabası da burada.",
+            d2_2: "Çabuk ol, arkamızda! Arabaya kaçmalıyız!",
+            winTitle: "CHAPTER 1 TAMAMLANDI",
+            winDesc: "Ormanı inceledin, sırları çözdün ve arabayla kaçtın.",
+            continuation: "Devam edecek...",
+            loseTitle: "YAKALANDIN!",
+            loseDesc: "Katil seni kaçarken yakaladı.",
+            runBtn: "Koş", jumpBtn: "Zıpla", crouchBtn: "Eğil"
+        },
+        en: {
+            title: "DARK FOREST: CHAPTER 1",
+            desc: "Chapter 1: Long story mode. Find the abandoned house, request help from the radio tower, connect with the police car, and escape.",
+            start: "Start Game",
+            objHouse: "Objective: Find the abandoned house in the forest.",
+            objRadio: "Find the radio tower and connect.",
+            objPolice: "Find the source of the police car siren.",
+            objRun: "The killer is coming! Run to the car and escape!",
+            d1Name: "Police Radio",
+            d1_1: "Central here... Check the abandoned house in the forest, the signal is coming from there!",
+            d1_2: "Be careful, the killer is still in the area...",
+            d2Name: "Wounded in House",
+            d2_1: "Help me... The killer is everywhere, the radio tower and police car are here too.",
+            d2_2: "Hurry up, right behind us! We must run to the car!",
+            winTitle: "CHAPTER 1 COMPLETED",
+            winDesc: "You explored the forest, uncovered secrets, and escaped by car.",
+            continuation: "To be continued...",
+            loseTitle: "CAUGHT!",
+            loseDesc: "The killer caught you while running.",
+            runBtn: "Run", jumpBtn: "Jump", crouchBtn: "Crouch"
+        }
+    };
+
+    function setLanguage(lang) {
+        currentLang = lang;
+        const t = texts[lang];
+        document.getElementById('menu-title').innerText = t.title;
+        document.getElementById('menu-desc').innerText = t.desc;
+        document.getElementById('btn-start').innerText = t.start;
+        document.getElementById('objective-text').innerText = t.objHouse;
+        document.getElementById('win-title').innerText = t.winTitle;
+        document.getElementById('win-desc').innerText = t.winDesc;
+        document.getElementById('to-be-continued').innerText = t.continuation;
+        document.getElementById('btn-run').innerText = t.runBtn;
+        document.getElementById('btn-jump').innerText = t.jumpBtn;
+        document.getElementById('btn-crouch').innerText = t.crouchBtn;
+
+        document.getElementById('lang-menu').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'flex';
+    }
+
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = new AudioContext();
+
+    function playSound(type) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+
+        if(type === 'battery') {
+            osc.type = 'sine'; osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        } else if (type === 'jumpscare') {
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(250, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 1.5);
+            gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+            osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+        } else if (type === 'car') {
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(180, audioCtx.currentTime + 2.0);
+            gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 2.0);
+            osc.start(); osc.stop(audioCtx.currentTime + 2.0);
+        }
+    }
+
+    let scene, camera, renderer, flashlight;
+    let clock = new THREE.Clock();
+    
+    const player = { height: 1.8, speed: 4.2, runSpeed: 7.8, isRunning: false, isCrouching: false, isJumping: false, jumpForce: 7, pitch: 0, yaw: 0 };
+    let gameState = 'MENU'; 
+    let enemy = null; let car = null; let house = null; let radioTower = null; let policeCar = null; let woundedPerson = null;
+    let worldObjects = []; let batteries = [];
+    let batteryLevel = 100;
+
+    let touchLeftId = null; let touchRightId = null;
+    let joyCenter = {x: 0, y: 0}; let joyVector = {x: 0, y: 0};
+    let lastLook = {x: 0, y: 0};
+
+    function initThreeJS() {
+        const container = document.getElementById('game-container');
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x010103); 
+        scene.fog = new THREE.FogExp2(0x010103, 0.035);
+
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
+        camera.position.set(0, player.height, 0);
+
+        renderer = new THREE.WebGLRenderer({ antialias: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.domElement.style.position = 'absolute'; renderer.domElement.style.top = '0'; renderer.domElement.style.left = '0';
+        container.insertBefore(renderer.domElement, container.firstChild);
+
+        flashlight = new THREE.SpotLight(0xffffff, 7.0, 150, Math.PI / 3.5, 0.4, 1.0);
+        flashlight.position.set(0, 0, 0);
+        camera.add(flashlight); camera.add(flashlight.target);
+        flashlight.target.position.set(0, 0, -1);
+        scene.add(camera);
+
+        const ambient = new THREE.AmbientLight(0x151825, 0.3);
+        scene.add(ambient);
+
+        buildWorld();
+        setupControls();
+
+        document.getElementById('dialog-box').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (gameState === 'DIALOGUE') advanceDialog();
+        });
+        document.getElementById('dialog-box').addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            if (gameState === 'DIALOGUE') advanceDialog();
+        });
+
+        window.addEventListener('resize', onWindowResize, false);
+        document.getElementById('btn-restart').addEventListener('click', () => window.location.reload());
+        document.getElementById('btn-restart-win').addEventListener('click', () => window.location.reload());
+
+        animate();
+    }
+
+    function buildWorld() {
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshBasicMaterial({ color: 0x0d140d }));
+        ground.rotation.x = -Math.PI / 2; scene.add(ground);
+
+        const trunkGeo = new THREE.CylinderGeometry(0.5, 0.8, 7, 6);
+        const leavesGeo = new THREE.ConeGeometry(3.5, 9, 6);
+        const trunkMat = new THREE.MeshBasicMaterial({ color: 0x1f140e });
+        const leavesMat = new THREE.MeshBasicMaterial({ color: 0x040d04 });
+
+        for (let i = 0; i < 500; i++) {
+            let x = (Math.random() - 0.5) * 700; 
+            let z = (Math.random() - 0.5) * 700;
+            if (Math.abs(x) < 8 && Math.abs(z) < 8) continue;
+
+            const tree = new THREE.Group();
+            const trunk = new THREE.Mesh(trunkGeo, trunkMat); trunk.position.y = 3.5; tree.add(trunk);
+            const leaves = new THREE.Mesh(leavesGeo, leavesMat); leaves.position.y = 10; tree.add(leaves);
+            tree.position.set(x, 0, z); tree.rotation.y = Math.random() * Math.PI;
+            scene.add(tree);
+            worldObjects.push({x: x, z: z, radius: 1.0}); 
+        }
+
+        createStoryObjects();
+        spawnBatteries();
+    }
+
+    function createStoryObjects() {
+        // Tərk edilmiş Ev
+        house = new THREE.Group();
+        const walls = new THREE.Mesh(new THREE.BoxGeometry(9, 5, 9), new THREE.MeshBasicMaterial({color: 0x1a1512}));
+        walls.position.y = 2.5; house.add(walls);
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(6.5, 3.5, 4), new THREE.MeshBasicMaterial({color: 0x2b110a}));
+        roof.position.y = 5.75; roof.rotation.y = Math.PI/4; house.add(roof);
+        house.position.set(-80, 0, -90);
+        scene.add(house);
+
+        // Radio Qülləsi
+        radioTower = new THREE.Group();
+        const towerMat = new THREE.MeshBasicMaterial({color: 0x333333});
+        const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 25), towerMat);
+        p1.position.y = 12.5; radioTower.add(p1);
+        radioTower.position.set(90, 0, -110);
+        scene.add(radioTower);
+
+        // Polis Maşını (Sirenalı)
+        policeCar = new THREE.Group();
+        const pCarBody = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.1, 4.8), new THREE.MeshBasicMaterial({color: 0x05051a}));
+        pCarBody.position.y = 0.9; policeCar.add(pCarBody);
+        // Göy/qırmızı işıqlar
+        const sirenL = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), new THREE.MeshBasicMaterial({color: 0x0000ff}));
+        sirenL.position.set(-0.5, 1.6, 0); policeCar.add(sirenL);
+        const sirenR = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), new THREE.MeshBasicMaterial({color: 0xff0000}));
+        sirenR.position.set(0.5, 1.6, 0); policeCar.add(sirenR);
+        policeCar.position.set(0, 0, -130);
+        scene.add(policeCar);
+
+        // Evin içindəki yaralı
+        woundedPerson = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 1.8), new THREE.MeshBasicMaterial({ color: 0x223344 }));
+        body.position.y = 0.2; woundedPerson.add(body);
+        woundedPerson.position.set(-80, 0, -88);
+        scene.add(woundedPerson);
+    }
+
+    function spawnBatteries() {
+        const batGeo = new THREE.BoxGeometry(0.2, 0.3, 0.15);
+        const batMat = new THREE.MeshBasicMaterial({ color: 0x00ff66 });
+        for(let i = 0; i < 500; i++) {
+            let x = (Math.random() - 0.5) * 700;
+            let z = (Math.random() - 0.5) * 700;
+            if (Math.abs(x) < 5 && Math.abs(z) < 5) continue;
+            let bat = new THREE.Mesh(batGeo, batMat);
+            bat.position.set(x, 0.15, z);
+            scene.add(bat);
+            batteries.push(bat);
+        }
+    }
+
+    function createRiggedEnemy() {
+        const group = new THREE.Group();
+        const mat = new THREE.MeshBasicMaterial({ color: 0x770000 });
+        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 1.4, 8), mat);
+        torso.position.y = 1.4; group.add(torso);
+        group.position.set(camera.position.x, 0, camera.position.z + 45);
+        scene.add(group);
+        enemy = { model: group, speed: 4.2 };
+    }
+
+    function spawnEscapeCar() {
+        car = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.1, 4.8), new THREE.MeshBasicMaterial({color: 0x111625}));
+        body.position.y = 0.9; car.add(body);
+        const top = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.9, 2.4), new THREE.MeshBasicMaterial({color: 0x080c14}));
+        top.position.set(0, 1.8, -0.4); car.add(top);
+
+        const hlMat = new THREE.MeshBasicMaterial({color: 0xffffff});
+        const hL = new THREE.Mesh(new THREE.CircleGeometry(0.25, 16), hlMat); hL.position.set(-0.8, 1.0, -2.42); hL.rotation.y = Math.PI; car.add(hL);
+        const hR = new THREE.Mesh(new THREE.CircleGeometry(0.25, 16), hlMat); hR.position.set(0.8, 1.0, -2.42); hR.rotation.y = Math.PI; car.add(hR);
+
+        const hlSpot1 = new THREE.SpotLight(0xffffff, 4.0, 70, Math.PI/4, 0.4, 1);
+        hlSpot1.position.set(-0.8, 1.0, -2.5); hlSpot1.target.position.set(-0.8, 0, -25);
+        car.add(hlSpot1); car.add(hlSpot1.target);
+
+        car.position.set(120, 0, -150);
+        car.lookAt(camera.position);
+        scene.add(car);
+
+        document.getElementById('waypoint').style.display = 'block';
+    }
+
+    let dialogIndex = 0; let typeInterval;
+    let currentDialogLines = [];
+    let currentDialogName = "";
+    let nextGameStateAfterDialog = "";
+
+    function startDialog(name, lines, nextState) {
+        gameState = 'DIALOGUE'; 
+        dialogIndex = 0;
+        currentDialogName = name;
+        currentDialogLines = lines;
+        nextGameStateAfterDialog = nextState;
+
+        document.getElementById('dialog-box').style.display = 'block';
+        document.getElementById('controls-layer').style.display = 'none';
+        joyVector = {x:0, y:0}; 
+        showDialogLine();
+    }
+
+    function showDialogLine() {
+        if(dialogIndex >= currentDialogLines.length) {
+            document.getElementById('dialog-box').style.display = 'none';
+            document.getElementById('controls-layer').style.display = 'block';
+            gameState = nextGameStateAfterDialog;
+            
+            const t = texts[currentLang];
+            if(gameState === 'FIND_RADIO') {
+                document.getElementById('objective-text').innerText = t.objRadio;
+            } else if(gameState === 'FIND_POLICE') {
+                document.getElementById('objective-text').innerText = t.objPolice;
+            } else if(gameState === 'CHAPTER1_RUN') {
+                document.getElementById('objective-text').innerText = t.objRun;
+                spawnEscapeCar();
+                createRiggedEnemy();
+                playSound('jumpscare');
+            }
+            return;
+        }
+        document.getElementById('dialog-name').innerText = currentDialogName;
+        const tc = document.getElementById('dialog-text'); tc.innerText = "";
+        let charIdx = 0; clearInterval(typeInterval);
+        typeInterval = setInterval(() => {
+            tc.innerText += currentDialogLines[dialogIndex].charAt(charIdx); charIdx++;
+            if(charIdx >= currentDialogLines[dialogIndex].length) clearInterval(typeInterval);
+        }, 30);
+    }
+
+    function advanceDialog() { dialogIndex++; showDialogLine(); }
+
+    function setupControls() {
+        const leftArea = document.getElementById('touch-area-left');
+        const rightArea = document.getElementById('touch-area-right');
+        const joyZone = document.getElementById('joystick-zone'); const joyKnob = document.getElementById('joystick-knob');
+
+        leftArea.addEventListener('touchstart', e => {
+            if(gameState === 'MENU' || gameState === 'DIALOGUE') return;
+            for(let t of e.changedTouches) {
+                if(touchLeftId === null) {
+                    touchLeftId = t.identifier;
+                    joyCenter = { x: t.clientX, y: t.clientY };
+                    joyZone.style.display = 'block'; 
+                    joyZone.style.left = (joyCenter.x - 60) + 'px'; 
+                    joyZone.style.top = (joyCenter.y - 60) + 'px';
+                    joyKnob.style.transform = `translate(0px, 0px)`;
+                }
+            }
+        });
+
+        leftArea.addEventListener('touchmove', e => {
+            if(gameState === 'DIALOGUE') return;
+            for(let t of e.changedTouches) {
+                if(t.identifier === touchLeftId) {
+                    let dx = t.clientX - joyCenter.x; 
+                    let dy = t.clientY - joyCenter.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy); 
+                    let maxDist = 40;
+                    if(dist > maxDist) { dx = (dx/dist) * maxDist; dy = (dy/dist) * maxDist; }
+                    joyKnob.style.transform = `translate(${dx}px, ${dy}px)`; 
+                    joyVector.x = dx / maxDist; 
+                    joyVector.y = dy / maxDist;
+                }
+            }
+        });
+
+        const endLeftTouch = e => { 
+            for(let t of e.changedTouches) { 
+                if(t.identifier === touchLeftId) { 
+                    touchLeftId = null; 
+                    joyVector = {x: 0, y: 0}; 
+                    joyZone.style.display = 'none'; 
+                } 
+            } 
+        };
+        leftArea.addEventListener('touchend', endLeftTouch); 
+        leftArea.addEventListener('touchcancel', endLeftTouch);
+
+        rightArea.addEventListener('touchstart', e => {
+            if(gameState === 'MENU' || gameState === 'DIALOGUE') return;
+            for(let t of e.changedTouches) {
+                if(touchRightId === null) {
+                    touchRightId = t.identifier; 
+                    lastLook = { x: t.clientX, y: t.clientY };
+                }
+            }
+        });
+
+        rightArea.addEventListener('touchmove', e => {
+            if(gameState === 'DIALOGUE') return;
+            for(let t of e.changedTouches) {
+                if(t.identifier === touchRightId) {
+                    let dx = t.clientX - lastLook.x; 
+                    let dy = t.clientY - lastLook.y;
+                    player.yaw -= dx * 0.005; 
+                    player.pitch -= dy * 0.005;
+                    player.pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, player.pitch));
+                    lastLook = { x: t.clientX, y: t.clientY };
+                }
+            }
+        });
+
+        const endRightTouch = e => { 
+            for(let t of e.changedTouches) { 
+                if(t.identifier === touchRightId) { 
+                    touchRightId = null; 
+                } 
+            } 
+        };
+        rightArea.addEventListener('touchend', endRightTouch); 
+        rightArea.addEventListener('touchcancel', endRightTouch);
+
+        document.getElementById('btn-run').addEventListener('touchstart', () => player.isRunning = true);
+        document.getElementById('btn-run').addEventListener('touchend', () => player.isRunning = false);
+        document.getElementById('btn-jump').addEventListener('touchstart', () => { if (!player.isJumping && gameState !== 'DIALOGUE') { player.isJumping = true; player.jumpForce = 7; }});
+        document.getElementById('btn-crouch').addEventListener('touchstart', () => player.isCrouching = true);
+        document.getElementById('btn-crouch').addEventListener('touchend', () => player.isCrouching = false);
+    }
+
+    function startGame() {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        document.getElementById('main-menu').style.display = 'none';
+        document.getElementById('camera-ui').style.display = 'block';
+        document.getElementById('controls-layer').style.display = 'block';
+        
+        gameState = 'FIND_HOUSE';
+        camera.position.set(0, player.height, 0); player.yaw = 0; player.pitch = 0; joyVector = {x:0, y:0};
+    }
+
+    function updatePlayer(dt) {
+        if(gameState === 'MENU' || gameState === 'DIALOGUE') return;
+
+        camera.rotation.order = "YXZ"; camera.rotation.y = player.yaw; camera.rotation.x = player.pitch;
+
+        let targetHeight = player.isCrouching ? player.height * 0.5 : player.height;
+        if (player.isJumping) {
+            camera.position.y += player.jumpForce * dt; player.jumpForce -= 18 * dt; 
+            if (camera.position.y <= targetHeight) { camera.position.y = targetHeight; player.isJumping = false; }
+        } else { camera.position.y += (targetHeight - camera.position.y) * 10 * dt; }
+
+        if (joyVector.x !== 0 || joyVector.y !== 0) {
+            const speed = player.isRunning ? player.runSpeed : player.speed;
+            const dirZ = new THREE.Vector3(0, 0, joyVector.y).applyAxisAngle(new THREE.Vector3(0,1,0), player.yaw);
+            const dirX = new THREE.Vector3(joyVector.x, 0, 0).applyAxisAngle(new THREE.Vector3(0,1,0), player.yaw);
+            const move = new THREE.Vector3().addVectors(dirZ, dirX).normalize().multiplyScalar(speed * dt);
+            
+            let newX = camera.position.x + move.x; let newZ = camera.position.z + move.z; let col = false;
+            if(Math.abs(newX) > 350 || Math.abs(newZ) > 350) col = true;
+
+            for(let o of worldObjects) { if (Math.pow(newX - o.x, 2) + Math.pow(newZ - o.z, 2) < Math.pow(o.radius + 0.6, 2)) { col = true; break; } }
+            if (!col) { camera.position.x = newX; camera.position.z = newZ; }
+
+            if (!player.isJumping && !player.isCrouching) {
+                camera.position.y = targetHeight + Math.sin(clock.getElapsedTime() * (player.isRunning?13:9)) * (player.isRunning?0.12:0.06);
+            }
+        }
+    }
+
+    function updateGameLogic(dt) {
+        const now = new Date();
+        document.getElementById('cam-time').innerText = now.toTimeString().split(' ')[0];
+
+        if(gameState !== 'MENU' && gameState !== 'DIALOGUE' && gameState !== 'CHAPTER1_WIN' && gameState !== 'LOSE') {
+            batteryLevel -= dt * 0.6; // 20 dəqiqəlik oyun üçün zaryadka daha yavaş azalır
+            if(batteryLevel < 0) batteryLevel = 0;
+            
+            for(let i = batteries.length - 1; i >= 0; i--) {
+                const b = batteries[i];
+                if(camera.position.distanceTo(b.position) < 2.2) {
+                    scene.remove(b); batteries.splice(i, 1);
+                    batteryLevel = Math.min(100, batteryLevel + 12);
+                    playSound('battery');
+                }
+            }
+
+            const batBar = document.getElementById('bat-level-bar');
+            batBar.style.width = batteryLevel + '%';
+            document.getElementById('bat-text').innerText = Math.floor(batteryLevel);
+            
+            if(batteryLevel > 20) { batBar.style.background = '#4CAF50'; flashlight.intensity = 7.0; }
+            else if(batteryLevel > 0) { batBar.style.background = 'red'; flashlight.intensity = Math.random() > 0.3 ? 7.0 : 2.0; }
+            else { flashlight.intensity = 0; }
+        }
+
+        const t = texts[currentLang];
+
+        // Mərhələlər üzrə hədəflər
+        if (gameState === 'FIND_HOUSE' && house) {
+            const d = Math.round(camera.position.distanceTo(house.position));
+            document.getElementById('waypoint').innerText = `Ev Məsafəsi: ${d}m`;
+            document.getElementById('waypoint').style.display = 'block';
+            if (camera.position.distanceTo(house.position) < 6.0) {
+                startDialog(t.d1Name, [t.d1_1, t.d1_2], 'FIND_RADIO');
+            }
+        } else if (gameState === 'FIND_RADIO' && radioTower) {
+            const d = Math.round(camera.position.distanceTo(radioTower.position));
+            document.getElementById('waypoint').innerText = `Radio Qülləsi: ${d}m`;
+            if (camera.position.distanceTo(radioTower.position) < 6.0) {
+                startDialog(t.d1Name, ["*Cızz...* Siqnal qəbul edildi. Evə qayıt və yaralını tap!", "Tez ol!"], 'FIND_POLICE');
+            }
+        } else if (gameState === 'FIND_POLICE' && policeCar) {
+            const d = Math.round(camera.position.distanceTo(policeCar.position));
+            document.getElementById('waypoint').innerText = `Polis Maşını: ${d}m`;
+            if (camera.position.distanceTo(policeCar.position) < 6.0) {
+                startDialog("Polis Cihazı", ["Polis bölməsi ilə əlaqə quruldu. İndi evdəki yaralıyı tapıb maşına qaçmalısan!"], 'FIND_WOUNDED_IN_HOUSE');
+            }
+        } else if (gameState === 'FIND_WOUNDED_IN_HOUSE' && woundedPerson) {
+            const d = Math.round(camera.position.distanceTo(woundedPerson.position));
+            document.getElementById('waypoint').innerText = `Yaralı Məsafəsi: ${d}m`;
+            if (camera.position.distanceTo(woundedPerson.position) < 4.0) {
+                startDialog(t.d2Name, [t.d2_1, t.d2_2], 'CHAPTER1_RUN');
+            }
+        }
+
+        if (car && gameState === 'CHAPTER1_RUN') {
+            const d = Math.round(camera.position.distanceTo(car.position));
+            document.getElementById('waypoint').innerText = `Qaçış Maşını: ${d}m`;
+        }
+
+        if (enemy && gameState === 'CHAPTER1_RUN') {
+            const m = enemy.model;
+            const target = camera.position.clone(); target.y = m.position.y;
+            m.lookAt(target);
+            m.translateZ(enemy.speed * dt);
+
+            if (m.position.distanceTo(camera.position) < 1.9) {
+                triggerLoss();
+            }
+        }
+
+        if (gameState === 'CHAPTER1_RUN' && car) {
+            if (car.position.distanceTo(camera.position) < 4.5) {
+                triggerChapter1Win();
+            }
+        }
+    }
+
+    function triggerChapter1Win() {
+        gameState = 'CHAPTER1_WIN'; document.getElementById('controls-layer').style.display = 'none';
+        playSound('car');
+        document.getElementById('fade-screen').style.opacity = 1;
+        setTimeout(() => {
+            document.getElementById('camera-ui').style.display = 'none';
+            document.getElementById('win-menu').style.display = 'flex';
+        }, 2000);
+    }
+
+    function triggerLoss() {
+        gameState = 'LOSE'; document.getElementById('controls-layer').style.display = 'none';
+        document.getElementById('blood-screen').style.opacity = 1;
+        setTimeout(() => { document.getElementById('fade-screen').style.opacity = 1; }, 500);
+        const t = texts[currentLang];
+        setTimeout(() => {
+            document.getElementById('camera-ui').style.display = 'none';
+            document.getElementById('game-over-menu').style.display = 'flex';
+            document.getElementById('end-title').innerText = t.loseTitle;
+            document.getElementById('end-desc').innerText = t.loseDesc;
+        }, 2000);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.1);
+        if (gameState !== 'MENU') { updatePlayer(dt); updateGameLogic(dt); }
+        renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    window.onload = initThreeJS;
+</script>
+</body>
+</html>
 
